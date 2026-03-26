@@ -301,6 +301,9 @@
 </div>
 
 <script>
+const PROXY = 'https://fancy-wave-4dd6.rafa-rgb.workers.dev/?url=';
+function proxyUrl(url) { return PROXY + encodeURIComponent(url); }
+
 let markets = [], sortField = 'score', sortAsc = false, expanded = null, scanning = false;
 
 function calcScore(noP, vol, days) {
@@ -377,7 +380,7 @@ async function startScan() {
 
     const results = await Promise.allSettled(
       offsets.map(off =>
-        fetch(`https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=${LIMIT}&offset=${off}`)
+        fetch(proxyUrl(`https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=${LIMIT}&offset=${off}`))
           .then(r => r.json()).catch(()=>[])
       )
     );
