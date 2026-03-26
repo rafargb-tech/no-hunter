@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NO Hunter — Polymarket</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #090b0f;
+    --surface: #0e1117;
+    --surface2: #141820;
+    --border: #1e2530;
+    --border2: #252d3a;
+    --accent: #00e5a0;
+    --accent2: #00b87a;
+    --accent-dim: rgba(0,229,160,0.08);
+    --accent-glow: rgba(0,229,160,0.18);
+    --red: #ff4d6a;
+    --orange: #ff8c42;
+    --yellow: #f5c518;
+    --text: #e8edf5;
+    --text2: #8a96a8;
+    --text3: #4a5568;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; overflow-x:hidden; }
+  body::before {
+    content:''; position:fixed; top:0; left:0; right:0; bottom:0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.025) 2px, rgba(0,0,0,0.025) 4px);
+    pointer-events:none; z-index:1000;
+  }
+  .header {
+    padding:24px 32px 18px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; background:rgba(9,11,15,0.96);
+    backdrop-filter:blur(12px); z-index:100;
+  }
+  .logo-mark {
+    width:36px; height:36px; border:2px solid var(--accent); border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-size:13px; font-weight:700; color:var(--accent);
+    box-shadow:0 0 14px var(--accent-glow); flex-shrink:0;
+  }
+  .header h1 { font-size:18px; font-weight:800; letter-spacing:-0.3px; }
+  .header h1 span { color:var(--accent); }
+  .header-tag { font-family:var(--mono); font-size:10px; color:var(--text3); letter-spacing:.08em; text-transform:uppercase; margin-top:2px; }
+  .status-pill {
+    display:flex; align-items:center; gap:7px; background:var(--surface2);
+    border:1px solid var(--border2); border-radius:20px; padding:6px 14px;
+    font-family:var(--mono); font-size:11px; color:var(--text2);
+  }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--text3); transition:all .3s; }
+  .dot.live { background:var(--accent); box-shadow:0 0 6px var(--accent); animation:blink 1.8s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .controls {
+    padding:18px 32px; background:var(--surface); border-bottom:1px solid var(--border);
+    display:flex; flex-wrap:wrap; gap:18px 24px; align-items:flex-end;
+  }
+  .cg { display:flex; flex-direction:column; gap:5px; }
+  .cg label { font-family:var(--mono); font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; }
+  .cg input[type=number], .cg select {
+    background:var(--bg); border:1px solid var(--border2); color:var(--text);
+    font-family:var(--mono); font-size:13px; padding:8px 12px; border-radius:6px;
+    outline:none; min-width:110px; transition:border-color .2s;
+  }
+  .cg input:focus, .cg select:focus { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); }
+  .range-row { display:flex; align-items:center; gap:10px; }
+  .cg input[type=range] {
+    -webkit-appearance:none; padding:0; height:3px; background:var(--border2);
+    cursor:pointer; min-width:150px; border:none; border-radius:2px;
+  }
+  .cg input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+    background:var(--accent); box-shadow:0 0 8px var(--accent-glow); cursor:pointer;
+  }
+  .rv { font-family:var(--mono); font-size:13px; color:var(--accent); min-width:44px; text-align:right; }
+  .rl { display:flex; justify-content:space-between; font-family:var(--mono); font-size:10px; color:var(--text3); margin-top:2px; }
+  .btn-scan {
+    background:var(--accent); color:#000; border:none; font-family:var(--sans);
+    font-size:13px; font-weight:700; padding:10px 22px; border-radius:6px;
+    cursor:pointer; letter-spacing:.02em; text-transform:uppercase; transition:all .2s;
+    display:flex; align-items:center; gap:8px; white-space:nowrap;
+  }
+  .btn-scan:hover { background:#00ff9f; box-shadow:0 0 20px var(--accent-glow); transform:translateY(-1px); }
+  .btn-scan:disabled { background:var(--text3); cursor:not-allowed; transform:none; box-shadow:none; }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  .spin { animation:spin .7s linear infinite; }
+  .progress-wrap { padding:10px 32px 0; }
+  .progress-track { height:3px; background:var(--border); border-radius:2px; overflow:hidden; margin-bottom:6px; }
+  .progress-fill { height:100%; background:linear-gradient(90deg, var(--accent2), var(--accent)); border-radius:2px; width:0%; transition:width .25s ease; }
+  .progress-text { font-family:var(--mono); font-size:11px; color:var(--text3); min-height:18px; }
+  .stats-bar { display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:var(--border); border-bottom:1px solid var(--border); margin-top:16px; }
+  .sc { background:var(--surface); padding:14px 20px; }
+  .sc-label { font-family:var(--mono); font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; }
+  .sc-val { font-family:var(--mono); font-size:20px; font-weight:700; color:var(--accent); margin:3px 0 2px; }
+  .sc-sub { font-family:var(--mono); font-size:10px; color:var(--text3); }
+  .kelly-panel { margin:20px 32px 4px; background:var(--surface); border:1px solid var(--border2); border-radius:10px; overflow:hidden; }
+  .kelly-head { padding:12px 18px; background:var(--surface2); border-bottom:1px solid var(--border); font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.05em; display:flex; align-items:center; gap:8px; }
+  .kelly-head span { color:var(--accent); font-family:var(--mono); }
+  .kelly-body { padding:14px 18px; display:flex; flex-wrap:wrap; gap:20px 28px; align-items:center; }
+  .ki { display:flex; flex-direction:column; gap:5px; }
+  .ki label { font-family:var(--mono); font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; }
+  .ki input { background:var(--bg); border:1px solid var(--border2); color:var(--text); font-family:var(--mono); font-size:14px; padding:8px 11px; border-radius:6px; outline:none; width:130px; transition:border-color .2s; }
+  .ki input:focus { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); }
+  .kelly-formula { font-family:var(--mono); font-size:10px; color:var(--text3); flex:1; min-width:180px; line-height:1.9; }
+  .kelly-formula .hl { color:var(--accent); }
+  .table-area { padding:16px 32px 32px; }
+  .table-topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .table-title { font-size:12px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.08em; }
+  .sort-btns { display:flex; gap:6px; }
+  .sb { background:var(--surface2); border:1px solid var(--border2); color:var(--text2); font-family:var(--mono); font-size:11px; padding:5px 11px; border-radius:4px; cursor:pointer; transition:all .15s; }
+  .sb:hover, .sb.active { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+  table { width:100%; border-collapse:collapse; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  th { background:var(--surface2); font-family:var(--mono); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text3); padding:11px 14px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; cursor:pointer; user-select:none; transition:color .15s; }
+  th:hover { color:var(--text); }
+  th.sorted { color:var(--accent); }
+  tr { border-bottom:1px solid var(--border); transition:background .12s; cursor:pointer; }
+  tr:last-child { border-bottom:none; }
+  tr:hover { background:var(--surface); }
+  td { padding:13px 14px; font-size:13px; vertical-align:middle; }
+  .mname { font-size:13px; font-weight:500; color:var(--text); line-height:1.4; max-width:320px; }
+  .mcat { font-family:var(--mono); font-size:10px; color:var(--text3); margin-top:3px; text-transform:uppercase; letter-spacing:.06em; }
+  .no-badge { font-family:var(--mono); font-size:15px; font-weight:700; padding:4px 9px; border-radius:5px; display:inline-block; min-width:52px; text-align:center; }
+  .tA { background:rgba(0,229,160,.12); color:var(--accent); border:1px solid rgba(0,229,160,.3); }
+  .tB { background:rgba(245,197,24,.1); color:var(--yellow); border:1px solid rgba(245,197,24,.25); }
+  .tC { background:rgba(255,140,66,.1); color:var(--orange); border:1px solid rgba(255,140,66,.25); }
+  .tD { background:rgba(255,77,106,.1); color:var(--red); border:1px solid rgba(255,77,106,.25); }
+  .score-num { font-family:var(--mono); font-size:14px; font-weight:700; margin-bottom:3px; }
+  .sbar { height:3px; background:var(--border2); border-radius:2px; overflow:hidden; }
+  .sbar-fill { height:100%; border-radius:2px; }
+  .days-cell { font-family:var(--mono); font-size:13px; color:var(--text2); white-space:nowrap; }
+  .days-cell.urgent { color:var(--orange); }
+  .days-cell.far { color:var(--text3); }
+  .kelly-amt { font-family:var(--mono); font-size:13px; font-weight:700; color:var(--accent); }
+  .kelly-pct { font-family:var(--mono); font-size:10px; color:var(--text3); margin-top:1px; }
+  .ret-cell { font-family:var(--mono); font-size:13px; font-weight:700; color:var(--accent); white-space:nowrap; }
+  .detail-row { background:var(--surface2) !important; border-left:3px solid var(--accent) !important; }
+  .detail-content { padding:14px 18px; font-family:var(--mono); font-size:11px; line-height:1.9; color:var(--text2); display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px 28px; }
+  .dl { color:var(--text3); }
+  .dv { color:var(--text); }
+  .dv.acc { color:var(--accent); font-weight:700; }
+  .link-btn { display:inline-flex; align-items:center; gap:4px; background:var(--surface2); border:1px solid var(--border2); color:var(--text2); font-family:var(--mono); font-size:11px; padding:5px 10px; border-radius:4px; text-decoration:none; transition:all .15s; }
+  .link-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .empty { text-align:center; padding:70px 20px; color:var(--text3); }
+  .empty .icon { font-size:44px; margin-bottom:14px; opacity:.5; }
+  .empty h3 { font-size:15px; font-weight:700; color:var(--text2); margin-bottom:8px; }
+  .empty p { font-family:var(--mono); font-size:11px; line-height:1.8; }
+  .legend { padding:14px 32px; display:flex; gap:18px; flex-wrap:wrap; align-items:center; border-top:1px solid var(--border); }
+  .leg-title { font-family:var(--mono); font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; }
+  .leg-item { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:var(--text2); }
+  .leg-dot { width:8px; height:8px; border-radius:50%; }
+  @media(max-width:900px){
+    .stats-bar{grid-template-columns:repeat(3,1fr);}
+    .table-area,.controls,.kelly-panel,.progress-wrap,.legend{padding-left:16px;padding-right:16px;}
+    .kelly-panel{margin-left:16px;margin-right:16px;}
+    .header{padding:16px;}
+    .mname{max-width:200px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="logo-mark">NO</div>
+    <div>
+      <h1><span>NO</span> HUNTER <span style="font-size:12px;color:var(--text3);font-weight:400">v2</span></h1>
+      <div class="header-tag">Polymarket · Scanner de probabilidades altas · ~9000 mercados</div>
+    </div>
+  </div>
+  <div class="status-pill">
+    <div class="dot" id="sDot"></div>
+    <span id="sTxt">Listo</span>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="cg">
+    <label>NO Price Máx.</label>
+    <div class="range-row">
+      <input type="range" id="maxNO" min="0.05" max="0.50" step="0.01" value="0.20" oninput="document.getElementById('maxNOv').textContent=parseFloat(this.value).toFixed(2)">
+      <span class="rv" id="maxNOv">0.20</span>
+    </div>
+    <div class="rl"><span>0.05</span><span>0.50</span></div>
+  </div>
+  <div class="cg">
+    <label>NO Price Mín.</label>
+    <div class="range-row">
+      <input type="range" id="minNO" min="0.01" max="0.30" step="0.01" value="0.03" oninput="document.getElementById('minNOv').textContent=parseFloat(this.value).toFixed(2)">
+      <span class="rv" id="minNOv">0.03</span>
+    </div>
+    <div class="rl"><span>0.01</span><span>0.30</span></div>
+  </div>
+  <div class="cg">
+    <label>Días Mín.</label>
+    <div class="range-row">
+      <input type="range" id="minD" min="1" max="30" step="1" value="3" oninput="document.getElementById('minDv').textContent=this.value+'d'">
+      <span class="rv" id="minDv">3d</span>
+    </div>
+    <div class="rl"><span>1</span><span>30</span></div>
+  </div>
+  <div class="cg">
+    <label>Días Máx.</label>
+    <div class="range-row">
+      <input type="range" id="maxD" min="7" max="365" step="1" value="90" oninput="document.getElementById('maxDv').textContent=this.value+'d'">
+      <span class="rv" id="maxDv">90d</span>
+    </div>
+    <div class="rl"><span>7</span><span>365</span></div>
+  </div>
+  <div class="cg">
+    <label>Vol. Mín. ($)</label>
+    <input type="number" id="minVol" value="200" min="0" step="100" style="width:110px">
+  </div>
+  <div class="cg">
+    <label>Profundidad scan</label>
+    <select id="depth">
+      <option value="20">Rápido ~2000</option>
+      <option value="50" selected>Normal ~5000</option>
+      <option value="90">Completo ~9000</option>
+    </select>
+  </div>
+  <button class="btn-scan" id="scanBtn" onclick="startScan()">
+    <svg id="bico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    Escanear
+  </button>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-track"><div class="progress-fill" id="pFill"></div></div>
+  <div class="progress-text" id="pTxt"></div>
+</div>
+
+<div class="stats-bar">
+  <div class="sc"><div class="sc-label">Encontrados</div><div class="sc-val" id="stFound">—</div><div class="sc-sub">En rango configurado</div></div>
+  <div class="sc"><div class="sc-label">Score Promedio</div><div class="sc-val" id="stAvg">—</div><div class="sc-sub">Top 10</div></div>
+  <div class="sc"><div class="sc-label">Retorno Medio</div><div class="sc-val" id="stRet">—</div><div class="sc-sub">Si resuelve NO</div></div>
+  <div class="sc"><div class="sc-label">Mejor Score</div><div class="sc-val" id="stBest">—</div><div class="sc-sub">Oportunidad #1</div></div>
+  <div class="sc"><div class="sc-label">Escaneados</div><div class="sc-val" id="stScan">—</div><div class="sc-sub">Mercados totales</div></div>
+</div>
+
+<div class="kelly-panel">
+  <div class="kelly-head">📐 <span>KELLY FRACCIONAL</span> — Sizing por posición</div>
+  <div class="kelly-body">
+    <div class="ki"><label>Bankroll ($)</label><input type="number" id="bankroll" value="1000" min="10" step="100" oninput="renderTable()"></div>
+    <div class="ki"><label>Fracción Kelly</label><input type="number" id="kFrac" value="0.25" min="0.05" max="1" step="0.05" oninput="renderTable()"></div>
+    <div class="ki"><label>Win Rate asumido (%)</label><input type="number" id="kWR" value="88" min="50" max="99" step="1" oninput="renderTable()"></div>
+    <div class="kelly-formula">
+      <span class="hl">f* = (p×b − q) / b</span><br>
+      p=win rate · q=1−p · b=retorno/$ apostado<br>
+      <span class="hl">Posición = f* × fracción × bankroll</span><br>
+      <span style="color:var(--text3)">Hard cap: 15% bankroll por trade</span>
+    </div>
+  </div>
+</div>
+
+<div class="table-area">
+  <div class="table-topbar">
+    <div class="table-title" id="tTitle">Oportunidades detectadas</div>
+    <div class="sort-btns">
+      <button class="sb active" id="sScore" onclick="sortBy('score')">Score ↓</button>
+      <button class="sb" id="sNO" onclick="sortBy('no')">NO Price</button>
+      <button class="sb" id="sRet" onclick="sortBy('ret')">Retorno</button>
+      <button class="sb" id="sDays" onclick="sortBy('days')">Días</button>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:28px">#</th>
+        <th>Mercado</th>
+        <th onclick="sortBy('no')">Precio NO</th>
+        <th onclick="sortBy('ret')">Retorno</th>
+        <th onclick="sortBy('score')">Score</th>
+        <th onclick="sortBy('days')">Vence en</th>
+        <th>Kelly</th>
+        <th>Ver</th>
+      </tr>
+    </thead>
+    <tbody id="tBody">
+      <tr><td colspan="8"><div class="empty">
+        <div class="icon">🔍</div>
+        <h3>Configura y escanea</h3>
+        <p>El scanner pagina ~9,000 mercados activos de Polymarket<br>y extrae los que tienen NO en tu rango configurado.<br><br>Usa "Normal ~5000" para un buen balance velocidad/cobertura.</p>
+      </div></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="legend">
+  <span class="leg-title">Score Tiers:</span>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>A ≥70</div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div>B 45–69</div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--orange)"></div>C 25–44</div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>D &lt;25</div>
+  <div style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3)">
+    Score = Retorno × log(Vol) × Timing · Óptimo: 7–20 días al vencimiento
+  </div>
+</div>
+
+<script>
+let markets = [], sortField = 'score', sortAsc = false, expanded = null, scanning = false;
+
+function calcScore(noP, vol, days) {
+  if (noP <= 0 || noP >= 1) return 0;
+  const ret = (1/noP) - 1;
+  const vs = Math.log10(Math.max(vol, 50));
+  let tf;
+  if (days < 3)        tf = 0.25;
+  else if (days < 7)   tf = 0.5 + (days-3)/4*0.35;
+  else if (days <= 20) tf = 1.0;
+  else if (days <= 45) tf = 0.88;
+  else if (days <= 90) tf = 0.72;
+  else                 tf = Math.max(0.3, 0.72 - (days-90)/275*0.42);
+  const retNorm = Math.min(ret, 25)/25;
+  return Math.min(Math.round(retNorm * vs * tf * 42 * 10)/10, 99.9);
+}
+
+function calcKelly(noP) {
+  const B    = parseFloat(document.getElementById('bankroll').value) || 1000;
+  const frac = parseFloat(document.getElementById('kFrac').value)    || 0.25;
+  const p    = (parseFloat(document.getElementById('kWR').value)     || 88) / 100;
+  const q    = 1 - p;
+  const b    = (1/noP) - 1;
+  const fStar = (p*b - q) / b;
+  if (fStar <= 0) return {amt:0, pct:0};
+  const eff = Math.min(fStar*frac, 0.15);
+  return { amt: Math.round(B*eff*100)/100, pct: Math.round(eff*1000)/10 };
+}
+
+function calcEV(noP) {
+  const p = (parseFloat(document.getElementById('kWR').value)||88)/100;
+  const b = (1/noP)-1;
+  return p*b - (1-p);
+}
+
+function noTier(p)    { return p<=0.07?'A':p<=0.11?'B':p<=0.16?'C':'D'; }
+function scoreTier(s) { return s>=70?'A':s>=45?'B':s>=25?'C':'D'; }
+function tierColor(t) { return {A:'var(--accent)',B:'var(--yellow)',C:'var(--orange)',D:'var(--red)'}[t]; }
+function daysClass(d) { return d<7?'urgent':d>45?'far':''; }
+function fmtVol(n)    { return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':Math.round(n)+''; }
+
+async function startScan() {
+  if (scanning) return;
+  scanning = true;
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Escaneando...`;
+  document.getElementById('sDot').classList.add('live');
+  document.getElementById('sTxt').textContent = 'Escaneando...';
+
+  const maxNO  = parseFloat(document.getElementById('maxNO').value);
+  const minNO  = parseFloat(document.getElementById('minNO').value);
+  const minDay = parseInt(document.getElementById('minD').value);
+  const maxDay = parseInt(document.getElementById('maxD').value);
+  const minVol = parseFloat(document.getElementById('minVol').value)||0;
+  const pMax   = parseInt(document.getElementById('depth').value);
+
+  markets = [];
+  let scanned = 0;
+  let page = 0;
+  const LIMIT = 100;
+  const BATCH = 5;
+
+  while (page < pMax) {
+    const offsets = [];
+    for (let i = 0; i < BATCH && page+i < pMax; i++) offsets.push((page+i)*LIMIT);
+    page += offsets.length;
+
+    const pct = Math.round(page/pMax*100);
+    document.getElementById('pFill').style.width = pct+'%';
+    document.getElementById('pTxt').textContent = `Páginas ${page}/${pMax} — ${scanned.toLocaleString()} revisados — ${markets.length} encontrados`;
+    document.getElementById('stScan').textContent  = scanned.toLocaleString();
+    document.getElementById('stFound').textContent = markets.length;
+
+    const results = await Promise.allSettled(
+      offsets.map(off =>
+        fetch(`https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=${LIMIT}&offset=${off}`)
+          .then(r => r.json()).catch(()=>[])
+      )
+    );
+
+    let gotAny = false;
+    for (const res of results) {
+      const data = res.status === 'fulfilled' ? res.value : [];
+      if (!Array.isArray(data) || data.length === 0) continue;
+      if (data.length < LIMIT) page = pMax; // end of data
+      gotAny = true;
+      scanned += data.length;
+
+      for (const m of data) {
+        try {
+          const prices = JSON.parse(m.outcomePrices || '[]');
+          if (prices.length !== 2) continue;
+          const yesP = parseFloat(prices[0]);
+          const noP  = parseFloat(prices[1]);
+          if (isNaN(yesP) || isNaN(noP)) continue;
+          if (noP < minNO || noP > maxNO) continue;
+
+          const end  = m.endDate ? new Date(m.endDate) : null;
+          const days = end ? Math.round((end - Date.now()) / 86400000) : null;
+          if (days === null || days < minDay || days > maxDay) continue;
+
+          const vol = parseFloat(m.volumeNum || m.volume || 0);
+          if (vol < minVol) continue;
+
+          markets.push({
+            q:       m.question || '—',
+            slug:    m.slug || '',
+            noP, yesP,
+            ret:     (1/noP) - 1,
+            vol,
+            days,
+            endDate: end ? end.toLocaleDateString('es-MX') : '—',
+            cat:     ((m.category || m.groupItemTitle || '—')+'').toUpperCase().slice(0,20),
+            sc:      calcScore(noP, vol, days),
+            liq:     parseFloat(m.liquidityNum || m.liquidity || 0)
+          });
+        } catch(e) {}
+      }
+    }
+    if (!gotAny) break;
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  sortAndRender();
+  updateStats();
+  document.getElementById('pFill').style.width = '100%';
+  document.getElementById('pTxt').textContent = `✓ Scan completo — ${scanned.toLocaleString()} mercados revisados — ${markets.length} encontrados`;
+  document.getElementById('sDot').classList.remove('live');
+  document.getElementById('sTxt').textContent = `${markets.length} oportunidades — ${new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})}`;
+
+  scanning = false;
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Re-Escanear`;
+}
+
+function updateStats() {
+  if (!markets.length) return;
+  const s = [...markets].sort((a,b)=>b.sc-a.sc);
+  const t10 = s.slice(0,10);
+  document.getElementById('stFound').textContent = markets.length;
+  document.getElementById('stAvg').textContent   = (t10.reduce((x,m)=>x+m.sc,0)/t10.length).toFixed(1);
+  document.getElementById('stRet').textContent   = '+' + ((markets.reduce((x,m)=>x+m.ret,0)/markets.length)*100).toFixed(0) + '%';
+  document.getElementById('stBest').textContent  = s[0]?.sc.toFixed(1)||'—';
+}
+
+function sortBy(f) {
+  if (sortField===f) sortAsc=!sortAsc; else { sortField=f; sortAsc=false; }
+  document.querySelectorAll('.sb').forEach(b=>b.classList.remove('active'));
+  const map={score:'sScore',no:'sNO',ret:'sRet',days:'sDays'};
+  const el = document.getElementById(map[f]);
+  if (el) el.classList.add('active');
+  sortAndRender();
+}
+
+function sortAndRender() {
+  const fn = {score:m=>m.sc, no:m=>m.noP, ret:m=>m.ret, days:m=>m.days}[sortField] || (m=>m.sc);
+  markets.sort((a,b) => sortAsc ? fn(a)-fn(b) : fn(b)-fn(a));
+  renderTable();
+}
+
+function renderTable() {
+  const tb = document.getElementById('tBody');
+  if (!markets.length) {
+    tb.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="icon">🔎</div><h3>Sin resultados</h3><p>Ningún mercado coincide con los filtros.<br>Prueba ampliar el rango o reducir Vol. mín.</p></div></td></tr>`;
+    return;
+  }
+  document.getElementById('tTitle').textContent = `${markets.length} oportunidades detectadas`;
+  let html = '';
+  markets.forEach((m,i)=>{
+    const nt = noTier(m.noP);
+    const st = scoreTier(m.sc);
+    const sc = tierColor(st);
+    const k  = calcKelly(m.noP);
+    const url = m.slug ? `https://polymarket.com/event/${m.slug}` : 'https://polymarket.com';
+    const shortQ = m.q.length>68 ? m.q.slice(0,66)+'…' : m.q;
+    const dc = daysClass(m.days);
+    html += `
+    <tr onclick="toggleDetail(${i})" id="r${i}">
+      <td style="font-family:var(--mono);font-size:10px;color:var(--text3)">${i+1}</td>
+      <td>
+        <div class="mname" title="${m.q.replace(/"/g,"'")}">${shortQ}</div>
+        <div class="mcat">${m.cat} · $${fmtVol(m.vol)}</div>
+      </td>
+      <td><span class="no-badge t${nt}">${m.noP.toFixed(3)}</span></td>
+      <td class="ret-cell">+${(m.ret*100).toFixed(0)}%</td>
+      <td>
+        <div class="score-num" style="color:${sc}">${m.sc.toFixed(1)}</div>
+        <div class="sbar"><div class="sbar-fill" style="width:${Math.min(m.sc,100)}%;background:${sc}"></div></div>
+      </td>
+      <td class="days-cell ${dc}">${m.days}d<br><span style="font-size:9px;color:var(--text3)">${m.endDate}</span></td>
+      <td>
+        ${k.amt>0
+          ? `<div class="kelly-amt">$${k.amt.toFixed(2)}</div><div class="kelly-pct">${k.pct}% bankroll</div>`
+          : `<span style="color:var(--text3);font-family:var(--mono);font-size:11px">—</span>`}
+      </td>
+      <td><a class="link-btn" href="${url}" target="_blank" onclick="event.stopPropagation()">↗ Ver</a></td>
+    </tr>
+    <tr id="d${i}" style="display:none" class="detail-row">
+      <td colspan="8" style="padding:0">
+        <div class="detail-content">
+          <div><span class="dl">Pregunta completa</span><br><span class="dv" style="line-height:1.5">${m.q}</span></div>
+          <div>
+            <span class="dl">YES price</span><br><span class="dv">${m.yesP.toFixed(4)}</span><br>
+            <span class="dl">NO price</span><br><span class="dv acc">${m.noP.toFixed(4)}</span>
+          </div>
+          <div>
+            <span class="dl">Retorno si NO</span><br><span class="dv acc">+${(m.ret*100).toFixed(1)}%</span><br>
+            <span class="dl">EV (${document.getElementById('kWR').value}% WR)</span><br><span class="dv acc">${calcEV(m.noP).toFixed(3)}</span>
+          </div>
+          <div>
+            <span class="dl">Volumen total</span><br><span class="dv">$${fmtVol(m.vol)}</span><br>
+            <span class="dl">Liquidez</span><br><span class="dv">$${fmtVol(m.liq)}</span>
+          </div>
+          <div>
+            <span class="dl">Vencimiento</span><br><span class="dv">${m.endDate} (${m.days}d)</span><br>
+            <span class="dl">Kelly sugerido</span><br><span class="dv acc">${k.amt>0?`$${k.amt.toFixed(2)} (${k.pct}%)`:'-'}</span>
+          </div>
+          <div>
+            <span class="dl">Score / Tier</span><br><span class="dv acc">${m.sc.toFixed(1)} — Tier ${scoreTier(m.sc)}</span><br>
+            <span class="dl">Categoría</span><br><span class="dv">${m.cat}</span>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  });
+  tb.innerHTML = html;
+}
+
+function toggleDetail(i) {
+  const row = document.getElementById(`d${i}`);
+  if (!row) return;
+  if (expanded !== null && expanded !== i) {
+    const prev = document.getElementById(`d${expanded}`);
+    if (prev) prev.style.display = 'none';
+  }
+  const open = row.style.display !== 'none';
+  row.style.display = open ? 'none' : 'table-row';
+  expanded = open ? null : i;
+}
+</script>
+</body>
+</html>
