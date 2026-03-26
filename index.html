@@ -168,7 +168,7 @@
     <div class="logo-mark">NO</div>
     <div>
       <h1><span>NO</span> HUNTER <span style="font-size:12px;color:var(--text3);font-weight:400">v2</span></h1>
-      <div class="header-tag">Polymarket · Scanner de probabilidades altas · ~9000 mercados</div>
+      <div class="header-tag">Polymarket · NO consistente · YES ≤ 15% → NO ≥ 85%</div>
     </div>
   </div>
   <div class="status-pill">
@@ -179,20 +179,20 @@
 
 <div class="controls">
   <div class="cg">
-    <label>NO Price Máx.</label>
+    <label>YES Máx. (evento improbable ↓)</label>
     <div class="range-row">
-      <input type="range" id="maxNO" min="0.05" max="0.50" step="0.01" value="0.20" oninput="document.getElementById('maxNOv').textContent=parseFloat(this.value).toFixed(2)">
-      <span class="rv" id="maxNOv">0.20</span>
+      <input type="range" id="maxNO" min="0.03" max="0.30" step="0.01" value="0.15" oninput="document.getElementById('maxNOv').textContent=parseFloat(this.value).toFixed(2)">
+      <span class="rv" id="maxNOv">0.15</span>
     </div>
-    <div class="rl"><span>0.05</span><span>0.50</span></div>
+    <div class="rl"><span>0.03</span><span>0.30</span></div>
   </div>
   <div class="cg">
-    <label>NO Price Mín.</label>
+    <label>YES Mín.</label>
     <div class="range-row">
-      <input type="range" id="minNO" min="0.01" max="0.30" step="0.01" value="0.03" oninput="document.getElementById('minNOv').textContent=parseFloat(this.value).toFixed(2)">
-      <span class="rv" id="minNOv">0.03</span>
+      <input type="range" id="minNO" min="0.01" max="0.20" step="0.01" value="0.01" oninput="document.getElementById('minNOv').textContent=parseFloat(this.value).toFixed(2)">
+      <span class="rv" id="minNOv">0.01</span>
     </div>
-    <div class="rl"><span>0.01</span><span>0.30</span></div>
+    <div class="rl"><span>0.01</span><span>0.20</span></div>
   </div>
   <div class="cg">
     <label>Días Mín.</label>
@@ -236,7 +236,7 @@
 <div class="stats-bar">
   <div class="sc"><div class="sc-label">Encontrados</div><div class="sc-val" id="stFound">—</div><div class="sc-sub">En rango configurado</div></div>
   <div class="sc"><div class="sc-label">Score Promedio</div><div class="sc-val" id="stAvg">—</div><div class="sc-sub">Top 10</div></div>
-  <div class="sc"><div class="sc-label">Retorno Medio</div><div class="sc-val" id="stRet">—</div><div class="sc-sub">Si resuelve NO</div></div>
+  <div class="sc"><div class="sc-label">Retorno Medio</div><div class="sc-val" id="stRet">—</div><div class="sc-sub">NO price promedio</div></div>
   <div class="sc"><div class="sc-label">Mejor Score</div><div class="sc-val" id="stBest">—</div><div class="sc-sub">Oportunidad #1</div></div>
   <div class="sc"><div class="sc-label">Escaneados</div><div class="sc-val" id="stScan">—</div><div class="sc-sub">Mercados totales</div></div>
 </div>
@@ -271,8 +271,8 @@
       <tr>
         <th style="width:28px">#</th>
         <th>Mercado</th>
-        <th onclick="sortBy('no')">Precio NO</th>
-        <th onclick="sortBy('ret')">Retorno</th>
+        <th onclick="sortBy('no')">NO Price</th>
+        <th onclick="sortBy('ret')">Retorno NO</th>
         <th onclick="sortBy('score')">Score</th>
         <th onclick="sortBy('days')">Vence en</th>
         <th>Kelly</th>
@@ -296,7 +296,7 @@
   <div class="leg-item"><div class="leg-dot" style="background:var(--orange)"></div>C 25–44</div>
   <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>D &lt;25</div>
   <div style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3)">
-    Score = Retorno × log(Vol) × Timing · Óptimo: 7–20 días al vencimiento
+    Score = Certeza(NO) × Liquidez × Timing · Busca YES bajo = NO seguro
   </div>
 </div>
 
@@ -308,17 +308,18 @@ let markets = [], sortField = 'score', sortAsc = false, expanded = null, scannin
 
 function calcScore(noP, vol, days) {
   if (noP <= 0 || noP >= 1) return 0;
-  const ret = (1/noP) - 1;
-  const vs = Math.log10(Math.max(vol, 50));
+  // Para estrategia NO consistente: noP cercano a 1.0 es mejor (más seguro)
+  // Retorno pequeño pero casi garantizado
+  const certainty = noP;           // 0.85→0.85, 0.97→0.97 — más alto = más seguro
+  const vs = Math.log10(Math.max(vol, 50)) / Math.log10(1000000); // 0→1 normalizado
   let tf;
   if (days < 3)        tf = 0.25;
-  else if (days < 7)   tf = 0.5 + (days-3)/4*0.35;
-  else if (days <= 20) tf = 1.0;
-  else if (days <= 45) tf = 0.88;
-  else if (days <= 90) tf = 0.72;
-  else                 tf = Math.max(0.3, 0.72 - (days-90)/275*0.42);
-  const retNorm = Math.min(ret, 25)/25;
-  return Math.min(Math.round(retNorm * vs * tf * 42 * 10)/10, 99.9);
+  else if (days < 7)   tf = 0.6 + (days-3)/4*0.3;
+  else if (days <= 30) tf = 1.0;
+  else if (days <= 60) tf = 0.85;
+  else if (days <= 90) tf = 0.70;
+  else                 tf = Math.max(0.3, 0.70 - (days-90)/275*0.40);
+  return Math.min(Math.round(certainty * vs * tf * 100 * 10) / 10, 99.9);
 }
 
 function calcKelly(noP) {
@@ -400,7 +401,10 @@ async function startScan() {
           const yesP = parseFloat(prices[0]);
           const noP  = parseFloat(prices[1]);
           if (isNaN(yesP) || isNaN(noP)) continue;
-          if (noP < minNO || noP > maxNO) continue;
+          // Estrategia: compramos NO cuando YES es bajo (evento improbable)
+          // YES <= maxNO significa: el mercado da poca probabilidad al evento
+          // NO >= 0.85 → cobro casi seguro, retorno pequeño y consistente
+          if (yesP < minNO || yesP > maxNO) continue;
 
           const end  = m.endDate ? new Date(m.endDate) : null;
           const days = end ? Math.round((end - Date.now()) / 86400000) : null;
@@ -409,11 +413,15 @@ async function startScan() {
           const vol = parseFloat(m.volumeNum || m.volume || 0);
           if (vol < minVol) continue;
 
+          // Retorno real: compramos NO a noP, cobro $1 si gana → retorno = (1/noP)-1
+          // Con noP=0.90 → retorno = +11%  Con noP=0.97 → retorno = +3%
+          const noRet = (1 / noP) - 1;
+
           markets.push({
             q:       m.question || '—',
             slug:    m.slug || '',
             noP, yesP,
-            ret:     (1/noP) - 1,
+            ret:     noRet,
             vol,
             days,
             endDate: end ? end.toLocaleDateString('es-MX') : '—',
@@ -446,7 +454,7 @@ function updateStats() {
   const t10 = s.slice(0,10);
   document.getElementById('stFound').textContent = markets.length;
   document.getElementById('stAvg').textContent   = (t10.reduce((x,m)=>x+m.sc,0)/t10.length).toFixed(1);
-  document.getElementById('stRet').textContent   = '+' + ((markets.reduce((x,m)=>x+m.ret,0)/markets.length)*100).toFixed(0) + '%';
+  document.getElementById('stRet').textContent   = (markets.reduce((x,m)=>x+m.noP,0)/markets.length).toFixed(3);
   document.getElementById('stBest').textContent  = s[0]?.sc.toFixed(1)||'—';
 }
 
@@ -488,8 +496,13 @@ function renderTable() {
         <div class="mname" title="${m.q.replace(/"/g,"'")}">${shortQ}</div>
         <div class="mcat">${m.cat} · $${fmtVol(m.vol)}</div>
       </td>
-      <td><span class="no-badge t${nt}">${m.noP.toFixed(3)}</span></td>
-      <td class="ret-cell">+${(m.ret*100).toFixed(0)}%</td>
+      <td>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--text3)">YES (evento)</span>
+          <span class="no-badge t${noTier(m.yesP)}">${m.yesP.toFixed(3)}</span>
+        </div>
+      </td>
+      <td class="ret-cell">+${(m.ret*100).toFixed(1)}%</td>
       <td>
         <div class="score-num" style="color:${sc}">${m.sc.toFixed(1)}</div>
         <div class="sbar"><div class="sbar-fill" style="width:${Math.min(m.sc,100)}%;background:${sc}"></div></div>
