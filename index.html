@@ -242,16 +242,16 @@
 </div>
 
 <div class="kelly-panel">
-  <div class="kelly-head">📐 <span>KELLY FRACCIONAL</span> — Sizing por posición</div>
+  <div class="kelly-head">💰 <span>SIZING DE POSICIÓN</span> — Porcentaje fijo del bankroll</div>
   <div class="kelly-body">
     <div class="ki"><label>Bankroll ($)</label><input type="number" id="bankroll" value="1000" min="10" step="100" oninput="renderTable()"></div>
-    <div class="ki"><label>Fracción Kelly</label><input type="number" id="kFrac" value="0.25" min="0.05" max="1" step="0.05" oninput="renderTable()"></div>
-    <div class="ki"><label>Win Rate asumido (%)</label><input type="number" id="kWR" value="88" min="50" max="99" step="1" oninput="renderTable()"></div>
+    <div class="ki"><label>% por trade</label><input type="number" id="tradePct" value="3" min="0.5" max="20" step="0.5" oninput="renderTable()"></div>
+    <div class="ki"><label>Trades simultáneos</label><input type="number" id="maxTrades" value="10" min="1" max="50" step="1" oninput="renderTable()"></div>
     <div class="kelly-formula">
-      <span class="hl">f* = (p×b − q) / b</span><br>
-      p=win rate · q=1−p · b=retorno/$ apostado<br>
-      <span class="hl">Posición = f* × fracción × bankroll</span><br>
-      <span style="color:var(--text3)">Hard cap: 15% bankroll por trade</span>
+      <span class="hl">Posición = bankroll × (% / 100)</span><br>
+      Capital total expuesto = % × trades simultáneos<br>
+      <span id="exposureCalc" class="hl">—</span><br>
+      <span style="color:var(--text3)">Diversifica en múltiples NO — el volumen es el edge</span>
     </div>
   </div>
 </div>
@@ -275,7 +275,7 @@
         <th onclick="sortBy('ret')">Retorno NO</th>
         <th onclick="sortBy('score')">Score</th>
         <th onclick="sortBy('days')">Vence en</th>
-        <th>Kelly</th>
+        <th>Sizing</th>
         <th>Ver</th>
       </tr>
     </thead>
@@ -322,22 +322,28 @@ function calcScore(noP, vol, days) {
   return Math.min(Math.round(certainty * vs * tf * 100 * 10) / 10, 99.9);
 }
 
-function calcKelly(noP) {
+function calcSizing(noP) {
   const B    = parseFloat(document.getElementById('bankroll').value) || 1000;
-  const frac = parseFloat(document.getElementById('kFrac').value)    || 0.25;
-  const p    = (parseFloat(document.getElementById('kWR').value)     || 88) / 100;
-  const q    = 1 - p;
-  const b    = (1/noP) - 1;
-  const fStar = (p*b - q) / b;
-  if (fStar <= 0) return {amt:0, pct:0};
-  const eff = Math.min(fStar*frac, 0.15);
-  return { amt: Math.round(B*eff*100)/100, pct: Math.round(eff*1000)/10 };
+  const pct  = parseFloat(document.getElementById('tradePct').value) || 3;
+  const amt  = B * (pct / 100);
+  const gain = amt * ((1 / noP) - 1);  // ganancia esperada si resuelve NO
+  return { amt: Math.round(amt * 100) / 100, pct, gain: Math.round(gain * 100) / 100 };
 }
 
 function calcEV(noP) {
-  const p = (parseFloat(document.getElementById('kWR').value)||88)/100;
-  const b = (1/noP)-1;
-  return p*b - (1-p);
+  // EV simple: asumimos win rate = noP (la probabilidad del mercado)
+  const b = (1 / noP) - 1;
+  return noP * b - (1 - noP);
+}
+
+function updateExposure() {
+  const B      = parseFloat(document.getElementById('bankroll').value) || 1000;
+  const pct    = parseFloat(document.getElementById('tradePct').value) || 3;
+  const trades = parseInt(document.getElementById('maxTrades').value) || 10;
+  const total  = (B * pct / 100 * trades).toFixed(2);
+  const totalPct = (pct * trades).toFixed(0);
+  const el = document.getElementById('exposureCalc');
+  if (el) el.textContent = `$${total} expuestos (${totalPct}% bankroll en ${trades} trades)`;
 }
 
 function noTier(p)    { return p<=0.07?'A':p<=0.11?'B':p<=0.16?'C':'D'; }
@@ -474,6 +480,7 @@ function sortAndRender() {
 }
 
 function renderTable() {
+  updateExposure();
   const tb = document.getElementById('tBody');
   if (!markets.length) {
     tb.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="icon">🔎</div><h3>Sin resultados</h3><p>Ningún mercado coincide con los filtros.<br>Prueba ampliar el rango o reducir Vol. mín.</p></div></td></tr>`;
@@ -485,7 +492,7 @@ function renderTable() {
     const nt = noTier(m.noP);
     const st = scoreTier(m.sc);
     const sc = tierColor(st);
-    const k  = calcKelly(m.noP);
+    const k  = calcSizing(m.noP);
     const url = m.slug ? `https://polymarket.com/event/${m.slug}` : 'https://polymarket.com';
     const shortQ = m.q.length>68 ? m.q.slice(0,66)+'…' : m.q;
     const dc = daysClass(m.days);
@@ -510,7 +517,7 @@ function renderTable() {
       <td class="days-cell ${dc}">${m.days}d<br><span style="font-size:9px;color:var(--text3)">${m.endDate}</span></td>
       <td>
         ${k.amt>0
-          ? `<div class="kelly-amt">$${k.amt.toFixed(2)}</div><div class="kelly-pct">${k.pct}% bankroll</div>`
+          ? `<div class="kelly-amt">$${k.amt.toFixed(2)}</div><div class="kelly-pct">+$${k.gain.toFixed(2)} si NO</div>`
           : `<span style="color:var(--text3);font-family:var(--mono);font-size:11px">—</span>`}
       </td>
       <td><a class="link-btn" href="${url}" target="_blank" onclick="event.stopPropagation()">↗ Ver</a></td>
@@ -525,7 +532,7 @@ function renderTable() {
           </div>
           <div>
             <span class="dl">Retorno si NO</span><br><span class="dv acc">+${(m.ret*100).toFixed(1)}%</span><br>
-            <span class="dl">EV (${document.getElementById('kWR').value}% WR)</span><br><span class="dv acc">${calcEV(m.noP).toFixed(3)}</span>
+            <span class="dl">EV (probabilidad mercado)</span><br><span class="dv acc">${calcEV(m.noP).toFixed(3)}</span>
           </div>
           <div>
             <span class="dl">Volumen total</span><br><span class="dv">$${fmtVol(m.vol)}</span><br>
@@ -533,7 +540,8 @@ function renderTable() {
           </div>
           <div>
             <span class="dl">Vencimiento</span><br><span class="dv">${m.endDate} (${m.days}d)</span><br>
-            <span class="dl">Kelly sugerido</span><br><span class="dv acc">${k.amt>0?`$${k.amt.toFixed(2)} (${k.pct}%)`:'-'}</span>
+            <span class="dl">Sizing sugerido</span><br><span class="dv acc">$${k.amt.toFixed(2)} (${k.pct}% bankroll)</span><br>
+            <span class="dl">Ganancia esperada</span><br><span class="dv acc">+$${k.gain.toFixed(2)} si resuelve NO</span>
           </div>
           <div>
             <span class="dl">Score / Tier</span><br><span class="dv acc">${m.sc.toFixed(1)} — Tier ${scoreTier(m.sc)}</span><br>
